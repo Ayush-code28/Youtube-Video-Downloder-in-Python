@@ -1,0 +1,81 @@
+import ipywidgets as widgets
+from IPython.display import display, clear_output
+from pytube import YouTube
+from pytube.cli import on_progress
+import os 
+
+def download_video():
+    """Downloads a YouTube video based on user input and selection."""
+    
+    def on_button_clicked(b):
+        clear_output()
+        display(url_input, submit_button)
+        
+        url = url_input.value
+        print(f"URL entered: {url}")  # Debugging output
+        
+        try:
+            yt = YouTube(url, on_progress_callback=on_progress)
+        except Exception as e:
+            print("Error: Could not access the URL. Please check and try again.")
+            print(f"Exception: {e}")
+            return
+
+        # Get available streams (resolutions, audio-only etc.)
+        print("Available Streams:")
+        streams = yt.streams.filter(progressive=True, file_extension='mp4')
+        stream_options = []
+        for i, stream in enumerate(streams):
+            resolution = stream.resolution if stream.resolution else "audio only"
+            abr = stream.abr if stream.abr else "N/A"
+            stream_options.append(f"{i+1}. Resolution: {resolution}, Bitrate: {abr}")
+            print(stream_options[-1])  # Debugging output
+        
+        # Update selection widget options
+        selection.options = [(opt, i) for i, opt in enumerate(stream_options, 1)]
+        
+        display(selection, download_button)
+
+    def on_download_button_clicked(b):
+        selected_stream_index = selection.value - 1
+        download_stream = streams[selected_stream_index]
+        try:
+            print("Downloading...")
+            download_stream.download()
+            print("Download completed!")
+            
+            # Get the current working directory
+            cwd = os.getcwd()
+            print(f"Video downloaded to: {cwd}")
+            
+            # List the files in the directory
+            files = os.listdir(cwd)
+            print("Files in the directory:")
+            for f in files:
+                print(f)
+        except Exception as e:
+            print(f"Error downloading video: {e}")
+
+    url_input = widgets.Text(
+        value='',
+        placeholder='Enter YouTube video URL',
+        description='Video URL:',
+        disabled=False
+    )
+
+    submit_button = widgets.Button(description="Submit")
+    submit_button.on_click(on_button_clicked)
+
+    selection = widgets.Dropdown(
+        options=[],
+        description='Select Stream:',
+        disabled=False,
+    )
+
+    download_button = widgets.Button(description="Download")
+    download_button.on_click(on_download_button_clicked)
+
+    display(url_input, submit_button)
+
+# Run the download function
+download_video()
